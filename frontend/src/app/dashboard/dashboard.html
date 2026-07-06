@@ -1,0 +1,103 @@
+<div class="app-layout">
+  <!-- Sidebar Navigation - Localized to Dashboard view only -->
+  <aside class="sidebar animate-slide-in">
+    <div class="sidebar-header">
+      <div class="logo-icon">✨</div>
+      <span class="logo-text">PixelCraft</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" routerLink="/dashboard">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" routerLink="/border-editor">
+        <span class="nav-icon">🖼️</span>
+        <span class="nav-label">Border Editor</span>
+      </a>
+      <div class="nav-separator">Future Modules</div>
+      <a class="nav-item disabled" title="Coming Soon">
+        <span class="nav-icon">📐</span>
+        <span class="nav-label">Resizer & Crop</span>
+      </a>
+      <a class="nav-item disabled" title="Coming Soon">
+        <span class="nav-icon">💧</span>
+        <span class="nav-label">Watermark Studio</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" (click)="toggleTheme()" [title]="isLightTheme() ? 'Switch to Dark Mode' : 'Switch to Light Mode'">
+        <span class="toggle-icon">{{ isLightTheme() ? '🌙' : '☀️' }}</span>
+        <span class="toggle-label">{{ isLightTheme() ? 'Dark Mode' : 'Light Mode' }}</span>
+      </button>
+      <div class="developer-info">
+        <span class="dev-badge">Optimized</span>
+        <span class="dev-status">V1.1.0 • Client-side</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Panel -->
+  <main class="main-panel animate-fade-in">
+    <header class="dashboard-header">
+      <div class="header-title">
+        <h1>Workspace Hub</h1>
+        <p class="subtitle">Access loss-free editors, configurations, and utilities.</p>
+      </div>
+    </header>
+
+    <div class="dashboard-content">
+      <!-- Grid Layout for Modules -->
+      <section class="modules-grid">
+        <!-- Border Editor Card -->
+        <a routerLink="/border-editor" class="module-card featured">
+          <div class="card-glow"></div>
+          <div class="card-badge">Lossless</div>
+          <div class="card-icon">🖼️</div>
+          <div class="card-content">
+            <h3>Image Border Editor</h3>
+            <p>Frame photography, configure asymmetric margins, rounded corners, and drop shadows with absolute pixel-perfect output.</p>
+            <span class="btn-action">Open Editor →</span>
+          </div>
+        </a>
+
+        <!-- Upcoming placeholder modules -->
+        <div class="module-card locked">
+          <div class="card-badge tag-soon">Coming Soon</div>
+          <div class="card-icon">📐</div>
+          <div class="card-content">
+            <h3>Lossless Resizer & Crop</h3>
+            <p>Smart downscaling algorithms, metadata preserves, aspect ratio frames, and PNG transparency retention.</p>
+          </div>
+        </div>
+
+        <div class="module-card locked">
+          <div class="card-badge tag-soon">Coming Soon</div>
+          <div class="card-icon">💧</div>
+          <div class="card-content">
+            <h3>Watermark Studio</h3>
+            <p>Overlay logos, text metadata headers, copyright stamps, and signature marks in bulk batches.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- System Statistics Panel -->
+      <section class="metrics-panel">
+        <h3>Local Client Performance Metrics</h3>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-value">100%</span>
+            <span class="metric-label">Quality Retention</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">0ms</span>
+            <span class="metric-label">Server Latency (In-Browser)</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">GPU</span>
+            <span class="metric-label">Hardware Acceleration</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

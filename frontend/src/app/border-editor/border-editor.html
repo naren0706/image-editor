@@ -1,0 +1,206 @@
+<div class="editor-container">
+  <!-- Header -->
+  <header class="editor-header">
+    <div class="header-left">
+      <a href="/dashboard" routerLink="/dashboard" class="btn-back">← Back to Dashboard</a>
+      <h1>Lossless Image Border Editor</h1>
+      <p class="subtitle">Customize borders, add shadows & corner radiuses, and export photos with 100% pixel quality.
+      </p>
+    </div>
+  </header>
+
+  <!-- Workspace Grid -->
+  <div class="workspace-grid">
+    <!-- Left: Controls Sidebar -->
+    <aside class="controls-panel">
+      <!-- File Selector (if not loaded) -->
+      @if (!imageLoaded()) {
+      <div class="upload-zone" (dragover)="onDragOver($event)" (drop)="onDrop($event)" (click)="fileInput.click()">
+        <div class="upload-icon">📥</div>
+        <h3>Upload Images</h3>
+        <p>Drag & drop multiple files, or click to browse</p>
+        <span class="upload-limit">Supports PNG, JPEG, WEBP</span>
+        <input #fileInput type="file" (change)="onFilesSelected($event)" accept="image/*" multiple
+          style="display: none;">
+      </div>
+      } @else {
+      <!-- Uploaded Images List -->
+      <div class="control-group">
+        <label>Queue List ({{ uploadedFiles().length }} images)</label>
+        <div class="uploaded-list">
+          @for (file of uploadedFiles(); track file.id; let i = $index) {
+          <div class="list-item" [class.active]="i === activeFileIndex()" (click)="setActiveFile(i)">
+            <span class="item-name">{{ file.name }}</span>
+            <button class="btn-delete" (click)="removeFile(i, $event)" title="Remove from queue">×</button>
+          </div>
+          }
+        </div>
+        <button class="btn-upload-more" (click)="fileInputMore.click()">+ Add More Images</button>
+        <input #fileInputMore type="file" (change)="onFilesSelected($event)" accept="image/*" multiple
+          style="display: none;">
+      </div>
+
+      <!-- Border Dimensions Configurations -->
+      <div class="control-group">
+        <label>Border Mode</label>
+        <div class="toggle-group">
+          <button [class.active]="borderMode() === 'uniform'"
+            (click)="borderMode.set('uniform'); onOptionChange()">Uniform</button>
+          <button [class.active]="borderMode() === 'separate'"
+            (click)="borderMode.set('separate'); onOptionChange()">Separate X / Y</button>
+        </div>
+      </div>
+
+      @if (borderMode() === 'uniform') {
+      <div class="control-group">
+        <label>Border Width (px)</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="1000" [ngModel]="borderWidthUniform()"
+            (ngModelChange)="borderWidthUniform.set($event); onOptionChange()">
+          <span class="slider-value">{{ borderWidthUniform() }}px</span>
+        </div>
+      </div>
+      } @else {
+      <div class="control-group">
+        <label>Horizontal Border (Left/Right)</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="1000" [ngModel]="borderWidthX()"
+            (ngModelChange)="borderWidthX.set($event); onOptionChange()">
+          <span class="slider-value">{{ borderWidthX() }}px</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Vertical Border (Top/Bottom)</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="1000" [ngModel]="borderWidthY()"
+            (ngModelChange)="borderWidthY.set($event); onOptionChange()">
+          <span class="slider-value">{{ borderWidthY() }}px</span>
+        </div>
+      </div>
+      }
+
+      <!-- Border Color -->
+      <div class="control-group">
+        <label>Border Color</label>
+        <div class="color-picker-container">
+          <input type="color" [ngModel]="borderColor()" (ngModelChange)="borderColor.set($event); onOptionChange()">
+          <input type="text" class="color-hex" [ngModel]="borderColor()"
+            (ngModelChange)="borderColor.set($event); onOptionChange()">
+        </div>
+        <div class="presets-row">
+          <button class="preset-btn" style="background-color: #ffffff; border: 1px solid #444"
+            (click)="borderColor.set('#ffffff'); onOptionChange()"></button>
+          <button class="preset-btn" style="background-color: #000000;"
+            (click)="borderColor.set('#000000'); onOptionChange()"></button>
+          <button class="preset-btn" style="background-color: #f3f4f6;"
+            (click)="borderColor.set('#f3f4f6'); onOptionChange()"></button>
+          <button class="preset-btn" style="background-color: #3b82f6;"
+            (click)="borderColor.set('#3b82f6'); onOptionChange()"></button>
+          <button class="preset-btn" style="background-color: #ef4444;"
+            (click)="borderColor.set('#ef4444'); onOptionChange()"></button>
+        </div>
+      </div>
+
+      <!-- Corner Radius Config -->
+      <div class="control-group">
+        <label>Image Corner Radius (px)</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="150" [ngModel]="borderRadius()"
+            (ngModelChange)="borderRadius.set($event); onOptionChange()">
+          <span class="slider-value">{{ borderRadius() }}px</span>
+        </div>
+      </div>
+
+      <!-- Shadow Configurations -->
+      <div class="control-group">
+        <div class="checkbox-container">
+          <input type="checkbox" id="shadowCheck" [ngModel]="shadowEnabled()"
+            (ngModelChange)="shadowEnabled.set($event); onOptionChange()">
+          <label for="shadowCheck">Enable Drop Shadow</label>
+        </div>
+      </div>
+
+      @if (shadowEnabled()) {
+      <div class="control-group card-nested">
+        <label>Shadow Blur Radius</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="80" [ngModel]="shadowBlur()"
+            (ngModelChange)="shadowBlur.set($event); onOptionChange()">
+          <span class="slider-value">{{ shadowBlur() }}px</span>
+        </div>
+
+        <label>Shadow Offset X</label>
+        <div class="slider-container">
+          <input type="range" min="-50" max="50" [ngModel]="shadowOffsetX()"
+            (ngModelChange)="shadowOffsetX.set($event); onOptionChange()">
+          <span class="slider-value">{{ shadowOffsetX() }}px</span>
+        </div>
+
+        <label>Shadow Offset Y</label>
+        <div class="slider-container">
+          <input type="range" min="-50" max="50" [ngModel]="shadowOffsetY()"
+            (ngModelChange)="shadowOffsetY.set($event); onOptionChange()">
+          <span class="slider-value">{{ shadowOffsetY() }}px</span>
+        </div>
+
+        <label>Shadow Color & Opacity</label>
+        <select [ngModel]="shadowColor()" (ngModelChange)="shadowColor.set($event); onOptionChange()"
+          class="select-field">
+          <option value="rgba(0, 0, 0, 0.4)">Subtle Black (40%)</option>
+          <option value="rgba(0, 0, 0, 0.6)">Default Black (60%)</option>
+          <option value="rgba(0, 0, 0, 0.85)">Dark Black (85%)</option>
+          <option value="rgba(59, 130, 246, 0.4)">Glow Blue</option>
+        </select>
+      </div>
+      }
+
+      <!-- Export settings -->
+      <div class="control-group">
+        <label>Export Format</label>
+        <div class="toggle-group">
+          <button [class.active]="exportFormat() === 'png'" (click)="exportFormat.set('png')">PNG (Lossless)</button>
+          <button [class.active]="exportFormat() === 'jpeg'" (click)="exportFormat.set('jpeg')">JPEG</button>
+        </div>
+      </div>
+
+      @if (exportFormat() === 'jpeg') {
+      <div class="control-group">
+        <label>JPEG Quality</label>
+        <div class="slider-container">
+          <input type="range" min="50" max="100" [ngModel]="jpegQuality()" (ngModelChange)="jpegQuality.set($event)">
+          <span class="slider-value">{{ jpegQuality() }}%</span>
+        </div>
+      </div>
+      }
+
+      <div class="action-buttons">
+        <button class="btn-primary" (click)="exportImage()">Export Selected</button>
+        @if (uploadedFiles().length > 1) {
+        <button class="btn-primary bulk" (click)="exportAllImages()">Export All ({{ uploadedFiles().length }})</button>
+        }
+        <button class="btn-secondary" (click)="resetEditor()">Reset Dashboard</button>
+      </div>
+      }
+    </aside>
+
+    <!-- Right: Preview Display -->
+    <main class="preview-panel">
+      @if (imageLoaded() && uploadedFiles().length > 0) {
+      <div class="preview-container">
+        <div class="canvas-wrapper">
+          <canvas #previewCanvas></canvas>
+        </div>
+        <div class="image-meta">
+          <span>Name: {{ uploadedFiles()[activeFileIndex()]?.name }}</span>
+          <span>Target Resolution: {{ previewCanvas.width }} x {{ previewCanvas.height }}</span>
+        </div>
+      </div>
+      } @else {
+      <div class="preview-empty">
+        <div class="empty-icon">🖼️</div>
+        <p>Your interactive live preview will appear here once images are uploaded.</p>
+      </div>
+      }
+    </main>
+  </div>
+</div>
