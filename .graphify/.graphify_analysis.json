@@ -1,0 +1,43 @@
+{
+  "communities": {
+    "0": [
+      "app_config",
+      "app_routes",
+      "main"
+    ],
+    "1": [
+      "app",
+      "app_app",
+      "app_spec"
+    ],
+    "2": [
+      "server"
+    ]
+  },
+  "cohesion": {
+    "0": 0.67,
+    "1": 0.67,
+    "2": 1
+  },
+  "gods": [
+    {
+      "id": "app_app",
+      "label": "App",
+      "edges": 1,
+      "degree": 1
+    }
+  ],
+  "surprises": [],
+  "labels": {
+    "0": "Community 0",
+    "1": "Community 1",
+    "2": "Community 2"
+  },
+  "questions": [
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `App` to the rest of the system?",
+      "why": "1 weakly-connected nodes found - possible documentation gaps or missing edges."
+    }
+  ]
+}

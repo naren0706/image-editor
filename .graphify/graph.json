@@ -1,0 +1,139 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "community_labels": {
+      "0": "Community 0",
+      "1": "Community 1",
+      "2": "Community 2"
+    }
+  },
+  "nodes": [
+    {
+      "id": "server",
+      "label": "server.js",
+      "file_type": "code",
+      "source_file": "backend/server.js",
+      "source_location": "L1",
+      "community": 2,
+      "community_name": "Community 2"
+    },
+    {
+      "id": "app_config",
+      "label": "app.config.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/app/app.config.ts",
+      "source_location": "L1",
+      "community": 0,
+      "community_name": "Community 0"
+    },
+    {
+      "id": "app_routes",
+      "label": "app.routes.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/app/app.routes.ts",
+      "source_location": "L1",
+      "community": 0,
+      "community_name": "Community 0"
+    },
+    {
+      "id": "app_spec",
+      "label": "app.spec.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/app/app.spec.ts",
+      "source_location": "L1",
+      "community": 1,
+      "community_name": "Community 1"
+    },
+    {
+      "id": "app",
+      "label": "app.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/app/app.ts",
+      "source_location": "L1",
+      "community": 1,
+      "community_name": "Community 1"
+    },
+    {
+      "id": "app_app",
+      "label": "App",
+      "file_type": "code",
+      "source_file": "frontend/src/app/app.ts",
+      "source_location": "L10",
+      "community": 1,
+      "community_name": "Community 1"
+    },
+    {
+      "id": "main",
+      "label": "main.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/main.ts",
+      "source_location": "L1",
+      "community": 0,
+      "community_name": "Community 0"
+    }
+  ],
+  "links": [
+    {
+      "source": "app_config",
+      "target": "app_routes",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/app/app.config.ts",
+      "source_location": "L4",
+      "weight": 1,
+      "_src": "app_config",
+      "_tgt": "app_routes",
+      "confidence_score": 1
+    },
+    {
+      "source": "app_spec",
+      "target": "app",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/app/app.spec.ts",
+      "source_location": "L2",
+      "weight": 1,
+      "_src": "app_spec",
+      "_tgt": "app",
+      "confidence_score": 1
+    },
+    {
+      "source": "app",
+      "target": "app_app",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/app/app.ts",
+      "source_location": "L10",
+      "weight": 1,
+      "_src": "app",
+      "_tgt": "app_app",
+      "confidence_score": 1
+    },
+    {
+      "source": "main",
+      "target": "app_config",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/main.ts",
+      "source_location": "L2",
+      "weight": 1,
+      "_src": "main",
+      "_tgt": "app_config",
+      "confidence_score": 1
+    },
+    {
+      "source": "main",
+      "target": "app",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/main.ts",
+      "source_location": "L3",
+      "weight": 1,
+      "_src": "main",
+      "_tgt": "app",
+      "confidence_score": 1
+    }
+  ],
+  "hyperedges": []
+}
