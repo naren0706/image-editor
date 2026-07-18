@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -8,6 +8,7 @@ interface ProcessedFile {
   imgElement: HTMLImageElement;
   width: number;
   height: number;
+  objectUrl?: string;
 }
 
 @Component({
@@ -24,6 +25,28 @@ export class BorderEditorComponent {
   uploadedFiles = signal<ProcessedFile[]>([]);
   activeFileIndex = signal<number>(0);
   imageLoaded = signal<boolean>(false);
+
+  // Processing / Progress state
+  isProcessing = signal<boolean>(false);
+  processingTitle = signal<string>('');
+  processingProgress = signal<number>(0);
+  processingTotal = signal<number>(0);
+  processingCurrentName = signal<string>('');
+  processingCompleted = signal<boolean>(false);
+  cancelRequested = signal<boolean>(false);
+
+  // Computed progress values
+  processingPercentage = computed(() => {
+    const total = this.processingTotal();
+    if (total === 0) return 0;
+    return Math.round((this.processingProgress() / total) * 100);
+  });
+
+  progressDashoffset = computed(() => {
+    const pct = this.processingPercentage();
+    const circumference = 314.159265;
+    return circumference - (pct / 100) * circumference;
+  });
 
   // Border Configuration Options
   borderMode = signal<'uniform' | 'separate'>('uniform');
@@ -65,44 +88,82 @@ export class BorderEditorComponent {
     }
   }
 
-  private loadFiles(files: FileList): void {
+  private async loadFiles(files: FileList): Promise<void> {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    this.isProcessing.set(true);
+    this.processingTitle.set('Importing Images');
+    this.processingProgress.set(0);
+    this.processingTotal.set(imageFiles.length);
+    this.processingCurrentName.set('');
+    this.processingCompleted.set(false);
+    this.cancelRequested.set(false);
+
     const loadedList: ProcessedFile[] = [];
-    let loadCounter = 0;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file.type.startsWith('image/')) continue;
+    for (let i = 0; i < imageFiles.length; i++) {
+      if (this.cancelRequested()) {
+        break;
+      }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          loadedList.push({
-            id: crypto.randomUUID(),
-            name: file.name,
-            imgElement: img,
-            width: img.width,
-            height: img.height
-          });
-          
-          loadCounter++;
-          if (loadCounter === files.length || loadCounter === Array.from(files).filter(f => f.type.startsWith('image/')).length) {
-            // Append loaded files to uploader state
-            this.uploadedFiles.update(current => [...current, ...loadedList]);
-            this.imageLoaded.set(true);
-            
-            // Default active element preview rendering (wait for DOM/ViewChild canvas initialization)
-            setTimeout(() => {
-              if (this.uploadedFiles().length > 0) {
-                this.updateCanvasPreview();
-              }
-            }, 100);
-          }
-        };
-        img.src = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      const file = imageFiles[i];
+      this.processingCurrentName.set(file.name);
+
+      try {
+        const imgElement = await this.loadImageAsync(file);
+        loadedList.push({
+          id: crypto.randomUUID(),
+          name: file.name,
+          imgElement: imgElement,
+          width: imgElement.width,
+          height: imgElement.height,
+          objectUrl: imgElement.src
+        });
+      } catch (err) {
+        console.error('Failed to load image:', file.name, err);
+      }
+
+      this.processingProgress.set(i + 1);
+      // Yield to allow UI updates and maintain responsiveness
+      await new Promise(resolve => setTimeout(resolve, 30));
     }
+
+    if (loadedList.length > 0) {
+      this.uploadedFiles.update(current => [...current, ...loadedList]);
+      this.imageLoaded.set(true);
+      
+      // Default active element preview rendering (wait for DOM/ViewChild canvas initialization)
+      setTimeout(() => {
+        if (this.uploadedFiles().length > 0) {
+          this.updateCanvasPreview();
+        }
+      }, 100);
+    }
+
+    this.processingCompleted.set(true);
+    
+    // Auto-close modal after 800ms if not canceled
+    if (!this.cancelRequested()) {
+      setTimeout(() => {
+        this.closeModal();
+      }, 800);
+    }
+  }
+
+  private loadImageAsync(file: File): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        resolve(img);
+      };
+      img.onerror = (err) => {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      };
+      img.src = objectUrl;
+    });
   }
 
 
@@ -116,7 +177,10 @@ export class BorderEditorComponent {
     event.stopPropagation();
     this.uploadedFiles.update(current => {
       const updated = [...current];
-      updated.splice(index, 1);
+      const removed = updated.splice(index, 1)[0];
+      if (removed && removed.objectUrl) {
+        URL.revokeObjectURL(removed.objectUrl);
+      }
       return updated;
     });
 
@@ -145,39 +209,22 @@ export class BorderEditorComponent {
       bY = this.borderWidthY();
     }
 
-    // Calculate extra padding needed for shadows to avoid clipping
-    let shadowPaddingLeft = 0;
-    let shadowPaddingRight = 0;
-    let shadowPaddingTop = 0;
-    let shadowPaddingBottom = 0;
+    // Calculate extra padding needed for shadows to avoid clipping (always 0 to prevent shadows spilling outside the border)
+    const shadowPaddingLeft = 0;
+    const shadowPaddingRight = 0;
+    const shadowPaddingTop = 0;
+    const shadowPaddingBottom = 0;
 
-    if (this.shadowEnabled()) {
-      const blur = this.shadowBlur();
-      const ox = this.shadowOffsetX();
-      const oy = this.shadowOffsetY();
-
-      // Shadow extends outwards by blur radius + offset direction
-      shadowPaddingLeft = Math.max(0, blur - ox);
-      shadowPaddingRight = Math.max(0, blur + ox);
-      shadowPaddingTop = Math.max(0, blur - oy);
-      shadowPaddingBottom = Math.max(0, blur + oy);
-    }
-
-    // Set canvas dimensions to include original image size + borders + shadow padding
-    const targetWidth = img.width + (bX * 2) + shadowPaddingLeft + shadowPaddingRight;
-    const targetHeight = img.height + (bY * 2) + shadowPaddingTop + shadowPaddingBottom;
+    // Set canvas dimensions to include original image size + borders (without shadow padding)
+    const targetWidth = img.width + (bX * 2);
+    const targetHeight = img.height + (bY * 2);
 
     canvas.width = targetWidth;
     canvas.height = targetHeight;
 
-    // Draw background/border color offset by the left/top shadow padding
+    // Draw background/border color covering the entire canvas
     ctx.fillStyle = this.borderColor();
-    ctx.fillRect(
-      shadowPaddingLeft, 
-      shadowPaddingTop, 
-      img.width + (bX * 2), 
-      img.height + (bY * 2)
-    );
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
 
     // Prepare clipping path for border radius + shadow if enabled
     ctx.save();
@@ -187,31 +234,37 @@ export class BorderEditorComponent {
       ctx.shadowBlur = this.shadowBlur();
       ctx.shadowOffsetX = this.shadowOffsetX();
       ctx.shadowOffsetY = this.shadowOffsetY();
+
+      // Draw shadow shape under the image
+      ctx.fillStyle = '#000000'; // Shadow fallback shape
+      const radius = this.borderRadius();
+      if (radius > 0) {
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, img.width, img.height, radius);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(bX, bY, img.width, img.height);
+      }
+
+      // Reset shadow properties so the image itself isn't double-shadowed
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
     }
 
-    // Image coordinates offset by shadow padding and border width
-    const imgX = shadowPaddingLeft + bX;
-    const imgY = shadowPaddingTop + bY;
+    // Image coordinates offset by border width
+    const imgX = bX;
+    const imgY = bY;
 
     // Clip rounded corners on inner image if radius > 0
     const radius = this.borderRadius();
     if (radius > 0) {
       ctx.beginPath();
-      // Draw rounded rectangle around inner image position
       ctx.roundRect(imgX, imgY, img.width, img.height, radius);
       ctx.closePath();
-      // Fill shadow underneath if shadow enabled
-      if (this.shadowEnabled()) {
-        ctx.fillStyle = '#000000'; // Shadow fallback shape
-        ctx.fill();
-      }
       ctx.clip();
-    } else {
-      // Flat rectangle shape for shadow fallback when radius is 0
-      if (this.shadowEnabled()) {
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(imgX, imgY, img.width, img.height);
-      }
     }
 
     // Draw image inside border frame
@@ -245,37 +298,92 @@ export class BorderEditorComponent {
   }
 
   // Bulk Export All Uploaded Files
-  exportAllImages(): void {
+  async exportAllImages(): Promise<void> {
     const files = this.uploadedFiles();
     if (files.length === 0) return;
 
+    this.isProcessing.set(true);
+    this.processingTitle.set('Exporting Images');
+    this.processingProgress.set(0);
+    this.processingTotal.set(files.length);
+    this.processingCurrentName.set('');
+    this.processingCompleted.set(false);
+    this.cancelRequested.set(false);
+
     // Create a temporary canvas in memory to render and export consecutively
     const tempCanvas = document.createElement('canvas');
-    files.forEach((file) => {
+    
+    for (let i = 0; i < files.length; i++) {
+      if (this.cancelRequested()) {
+        break;
+      }
+
+      const file = files[i];
+      this.processingCurrentName.set(file.name);
+
+      // Render to temporary canvas
       this.renderImageToCanvas(file, tempCanvas);
-      this.downloadCanvas(tempCanvas, file.name);
-    });
+
+      // Save Canvas asynchronously
+      await this.downloadCanvasAsync(tempCanvas, file.name);
+
+      this.processingProgress.set(i + 1);
+
+      // Yield control to browser so loader modal repaint is smooth
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    this.processingCompleted.set(true);
   }
 
   private downloadFile(file: ProcessedFile): void {
     if (!this.previewCanvas) return;
-    this.downloadCanvas(this.previewCanvas.nativeElement, file.name);
+    this.downloadCanvasAsync(this.previewCanvas.nativeElement, file.name);
   }
 
-  private downloadCanvas(canvas: HTMLCanvasElement, filename: string): void {
-    const mimeType = this.exportFormat() === 'png' ? 'image/png' : 'image/jpeg';
-    const quality = this.exportFormat() === 'png' ? undefined : (this.jpegQuality() / 100);
+  private downloadCanvasAsync(canvas: HTMLCanvasElement, filename: string): Promise<void> {
+    return new Promise((resolve) => {
+      const mimeType = this.exportFormat() === 'png' ? 'image/png' : 'image/jpeg';
+      const quality = this.exportFormat() === 'png' ? undefined : (this.jpegQuality() / 100);
 
-    const dataUrl = canvas.toDataURL(mimeType, quality);
-    const link = document.createElement('a');
-    const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
-    
-    link.download = `${nameWithoutExt}_bordered.${this.exportFormat()}`;
-    link.href = dataUrl;
-    link.click();
+      // toBlob performs compression off the main thread, greatly improving performance
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
+          
+          link.download = `${nameWithoutExt}_bordered.${this.exportFormat()}`;
+          link.href = url;
+          link.click();
+          
+          // Revoke the temporary Object URL after a delay to ensure download registers
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 150);
+        }
+        resolve();
+      }, mimeType, quality);
+    });
+  }
+
+  cancelProcessing(): void {
+    this.cancelRequested.set(true);
+    this.closeModal();
+  }
+
+  closeModal(): void {
+    this.isProcessing.set(false);
+    this.processingCompleted.set(false);
   }
 
   resetEditor(): void {
+    // Revoke all object URLs to prevent memory leaks
+    this.uploadedFiles().forEach(file => {
+      if (file.objectUrl) {
+        URL.revokeObjectURL(file.objectUrl);
+      }
+    });
     this.uploadedFiles.set([]);
     this.activeFileIndex.set(0);
     this.imageLoaded.set(false);
