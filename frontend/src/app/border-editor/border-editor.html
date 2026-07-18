@@ -203,4 +203,62 @@
       }
     </main>
   </div>
+
+  <!-- Real-time Progress Loader Modal -->
+  @if (isProcessing()) {
+  <div class="modal-overlay animate-fade-in">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>{{ processingTitle() }}</h2>
+        <p class="modal-subtitle">
+          @if (processingCompleted() && !cancelRequested()) {
+            Completed successfully!
+          } @else if (cancelRequested()) {
+            Process canceled.
+          } @else {
+            Please wait while we process your files...
+          }
+        </p>
+      </div>
+
+      <div class="modal-body">
+        <div class="progress-container">
+          <div class="progress-circle-wrapper">
+            <svg class="progress-ring" width="120" height="120">
+              <circle class="progress-ring__background" stroke="var(--border-color)" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+              <circle class="progress-ring__circle" stroke="url(#progress-gradient)" stroke-width="8" stroke-linecap="round" fill="transparent" r="50" cx="60" cy="60"
+                [style.strokeDashoffset]="progressDashoffset()"
+                style="stroke-dasharray: 314.16; transition: stroke-dashoffset 0.3s ease;"/>
+              <defs>
+                <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#3b82f6" />
+                  <stop offset="100%" stop-color="#8b5cf6" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="progress-text">
+              <span class="progress-percentage">{{ processingPercentage() }}%</span>
+              <span class="progress-fraction">{{ processingProgress() }} / {{ processingTotal() }}</span>
+            </div>
+          </div>
+
+          @if (!processingCompleted() && processingCurrentName()) {
+          <div class="current-file-info">
+            <span class="status-dot pulsing"></span>
+            <span class="current-file-name" [title]="processingCurrentName()">{{ processingCurrentName() }}</span>
+          </div>
+          }
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        @if (!processingCompleted()) {
+          <button class="btn-cancel" (click)="cancelProcessing()">Cancel</button>
+        } @else {
+          <button class="btn-success-close" (click)="closeModal()">Done</button>
+        }
+      </div>
+    </div>
+  </div>
+  }
 </div>
