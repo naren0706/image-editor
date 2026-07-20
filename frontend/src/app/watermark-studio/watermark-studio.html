@@ -4,7 +4,8 @@
     <div class="header-left">
       <a href="/dashboard" routerLink="/dashboard" class="btn-back">← Back to Dashboard</a>
       <h1>Watermark & Text Studio</h1>
-      <p class="subtitle">Overlay text, watermarks, and headers onto your images with precision controls & drag-and-drop placement.</p>
+      <p class="subtitle">Overlay text, watermarks, and headers onto your images with precision controls & drag-and-drop
+        placement.</p>
     </div>
   </header>
 
@@ -44,13 +45,14 @@
         <label>Text Elements</label>
         <div class="text-box-manager">
           <button class="btn-add-text" (click)="addTextOverlay()">+ Add Text Element</button>
-          
+
           @if (textOverlays().length > 0) {
           <div class="text-overlays-list">
             @for (item of textOverlays(); track item.id; let i = $index) {
             <div class="overlay-item" [class.active]="i === activeTextIndex()" (click)="setActiveTextIndex(i)">
               <span class="overlay-label">{{ item.text || '(empty text)' }}</span>
-              <button class="btn-remove-text" (click)="removeTextOverlay(i, $event)" title="Delete text overlay">×</button>
+              <button class="btn-remove-text" (click)="removeTextOverlay(i, $event)"
+                title="Delete text overlay">×</button>
             </div>
             }
           </div>
@@ -90,14 +92,16 @@
                 <option value="Times New Roman">Times New Roman (Serif)</option>
                 <option value="Brush Script MT">Brush Script MT (Cursive)</option>
                 @for (customFont of customFontsList(); track customFont) {
-                  <option [value]="customFont">{{ customFont }} (Custom)</option>
+                <option [value]="customFont">{{ customFont }} (Custom)</option>
                 }
               </select>
               <div class="control-group" style="margin-top: 6px;">
                 <label style="font-size: 10px;">Load Custom Google Font</label>
                 <div style="display: flex; gap: 6px;">
-                  <input type="text" class="input-field" [(ngModel)]="customGoogleFont" (keyup.enter)="loadGoogleFont()" placeholder="e.g. Lobster, Righteous, Inter" style="padding: 6px 10px;">
-                  <button class="style-toggle-btn" (click)="loadGoogleFont()" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Load</button>
+                  <input type="text" class="input-field" [(ngModel)]="customGoogleFont" (keyup.enter)="loadGoogleFont()"
+                    placeholder="e.g. Lobster, Righteous, Inter" style="padding: 6px 10px;min-width:fit-content;">
+                  <button class="style-toggle-btn" (click)="loadGoogleFont()"
+                    style="padding: 6px 12px; font-size: 12px; white-space: nowrap;min-width:fit-content;">Load</button>
                 </div>
               </div>
             </div>
@@ -180,7 +184,7 @@
                 (ngModelChange)="updateActiveTextProperty('outlineWidth', $event ? 3 : 0)">
               <label for="outlineCheck">Add Text Outline (Border)</label>
             </div>
-            
+
             @if (textOverlays()[activeTextIndex()!].outlineWidth > 0) {
             <div class="control-row-dual" style="margin-top: 8px;">
               <div class="control-group">
@@ -207,7 +211,7 @@
                 (ngModelChange)="updateActiveTextProperty('shadowEnabled', $event)">
               <label for="shadowCheck">Add Shadow / Glow</label>
             </div>
-            
+
             @if (textOverlays()[activeTextIndex()!].shadowEnabled) {
             <div class="control-row-dual" style="margin-top: 8px;">
               <div class="control-group">
@@ -239,8 +243,10 @@
       <div class="control-group">
         <label>Export Format</label>
         <div class="toggle-group-row">
-          <button class="toggle-btn" [class.active]="exportFormat() === 'png'" (click)="exportFormat.set('png')">PNG (Lossless)</button>
-          <button class="toggle-btn" [class.active]="exportFormat() === 'jpeg'" (click)="exportFormat.set('jpeg')">JPEG</button>
+          <button class="toggle-btn" [class.active]="exportFormat() === 'png'" (click)="exportFormat.set('png')">PNG
+            (Lossless)</button>
+          <button class="toggle-btn" [class.active]="exportFormat() === 'jpeg'"
+            (click)="exportFormat.set('jpeg')">JPEG</button>
         </div>
       </div>
 
@@ -272,14 +278,9 @@
           💡 Drag & drop text overlays directly on the canvas to place them! Click any text box to edit its settings.
         </div>
         <div class="canvas-wrapper">
-          <canvas #previewCanvas
-            (mousedown)="onCanvasMouseDown($event)"
-            (mousemove)="onCanvasMouseMove($event)"
-            (mouseup)="onCanvasMouseUp()"
-            (mouseleave)="onCanvasMouseUp()"
-            (touchstart)="onCanvasTouchStart($event)"
-            (touchmove)="onCanvasTouchMove($event)"
-            (touchend)="onCanvasTouchEnd()"></canvas>
+          <canvas #previewCanvas (mousedown)="onCanvasMouseDown($event)" (mousemove)="onCanvasMouseMove($event)"
+            (mouseup)="onCanvasMouseUp()" (mouseleave)="onCanvasMouseUp()" (touchstart)="onCanvasTouchStart($event)"
+            (touchmove)="onCanvasTouchMove($event)" (touchend)="onCanvasTouchEnd()"></canvas>
         </div>
         <div class="image-meta">
           <span>Name: {{ uploadedFiles()[activeFileIndex()]?.name }}</span>

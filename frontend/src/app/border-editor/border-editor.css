@@ -670,3 +670,112 @@ canvas {
   opacity: 0.9;
   transform: translateY(-1px);
 }
+
+/* Floating PiP Preview Container */
+.floating-preview-container {
+  position: fixed;
+  z-index: 10000;
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 
+              0 0 20px rgba(59, 130, 246, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  touch-action: none;
+  transition: border-color 0.3s ease;
+}
+
+.floating-preview-container:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+:host-context(.light-theme) .floating-preview-container {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 
+              0 0 20px rgba(37, 99, 235, 0.05);
+}
+
+/* Floating Header/Drag handle */
+.floating-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: move;
+  user-select: none;
+  font-family: Inter, sans-serif;
+  flex-shrink: 0;
+}
+
+:host-context(.light-theme) .floating-header {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.drag-handle-indicator {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.floating-resize-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.floating-resize-btn:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Canvas Wrapper inside PiP */
+.floating-canvas-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.floating-preview-container canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  box-shadow: none;
+}
+
+/* Drag to resize handle */
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, var(--text-secondary) 50%);
+  border-bottom-right-radius: 16px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.resize-handle:hover {
+  opacity: 1;
+}

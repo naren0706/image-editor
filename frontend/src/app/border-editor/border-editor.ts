@@ -1,6 +1,8 @@
-import { Component, ElementRef, ViewChild, signal, computed } from '@angular/core';
+import { Component, ElementRef, ViewChild, signal, computed, effect, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 interface ProcessedFile {
   id: string;
@@ -18,8 +20,45 @@ interface ProcessedFile {
   templateUrl: './border-editor.html',
   styleUrl: './border-editor.css'
 })
-export class BorderEditorComponent {
+export class BorderEditorComponent implements OnDestroy {
   @ViewChild('previewCanvas', { static: false }) previewCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('floatingCanvas', { static: false }) floatingCanvas!: ElementRef<HTMLCanvasElement>;
+
+  // Floating Preview Configurations & State
+  private observer: IntersectionObserver | null = null;
+  isFloatingPreviewVisible = signal<boolean>(false);
+  floatingX = signal<number>(20);
+  floatingY = signal<number>(80);
+  floatingWidth = signal<number>(150);
+  floatingHeight = signal<number>(150);
+
+  // Drag and Resize State
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private initialFloatingX = 0;
+  private initialFloatingY = 0;
+  isDragging = false;
+
+  private resizeStartX = 0;
+  private resizeStartY = 0;
+  private initialWidth = 0;
+  private initialHeight = 0;
+  isResizing = false;
+
+  constructor() {
+    effect(() => {
+      if (this.imageLoaded()) {
+        this.setupIntersectionObserver();
+      } else {
+        if (this.observer) {
+          this.observer.disconnect();
+          this.observer = null;
+        }
+        this.isFloatingPreviewVisible.set(false);
+      }
+    });
+  }
+
 
   // Upload state
   uploadedFiles = signal<ProcessedFile[]>([]);
@@ -54,10 +93,10 @@ export class BorderEditorComponent {
   borderWidthX = signal<number>(20);
   borderWidthY = signal<number>(20);
   borderColor = signal<string>('#ffffff');
-  
+
   // Advanced Configurations
   borderRadius = signal<number>(0);
-  
+
   // Shadow Configurations
   shadowEnabled = signal<boolean>(false);
   shadowColor = signal<string>('rgba(0, 0, 0, 0.5)');
@@ -132,7 +171,7 @@ export class BorderEditorComponent {
     if (loadedList.length > 0) {
       this.uploadedFiles.update(current => [...current, ...loadedList]);
       this.imageLoaded.set(true);
-      
+
       // Default active element preview rendering (wait for DOM/ViewChild canvas initialization)
       setTimeout(() => {
         if (this.uploadedFiles().length > 0) {
@@ -142,7 +181,7 @@ export class BorderEditorComponent {
     }
 
     this.processingCompleted.set(true);
-    
+
     // Auto-close modal after 800ms if not canceled
     if (!this.cancelRequested()) {
       setTimeout(() => {
@@ -200,7 +239,7 @@ export class BorderEditorComponent {
     if (!ctx) return;
 
     const img = file.imgElement;
-    
+
     // Calculate borders
     let bX = this.borderWidthUniform();
     let bY = this.borderWidthUniform();
@@ -269,7 +308,7 @@ export class BorderEditorComponent {
 
     // Draw image inside border frame
     ctx.drawImage(img, imgX, imgY, img.width, img.height);
-    
+
     ctx.restore();
   }
 
@@ -278,15 +317,179 @@ export class BorderEditorComponent {
   updateCanvasPreview(): void {
     const files = this.uploadedFiles();
     const idx = this.activeFileIndex();
-    if (files.length === 0 || !files[idx] || !this.previewCanvas) return;
+    if (files.length === 0 || !files[idx]) return;
 
-    this.renderImageToCanvas(files[idx], this.previewCanvas.nativeElement);
+    if (this.previewCanvas) {
+      this.renderImageToCanvas(files[idx], this.previewCanvas.nativeElement);
+    }
+    if (this.floatingCanvas && this.isFloatingPreviewVisible()) {
+      this.renderImageToCanvas(files[idx], this.floatingCanvas.nativeElement);
+    }
   }
 
   // Value change handlers triggering instant preview updates
   onOptionChange(): void {
     this.updateCanvasPreview();
   }
+
+  // Floating Preview Helper Methods
+  private setupIntersectionObserver(): void {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+
+    setTimeout(() => {
+      if (!this.previewCanvas) return;
+
+      const options = {
+        root: null,
+        threshold: 0.05
+      };
+
+      this.observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const isMobile = window.innerWidth <= 768;
+          const shouldBeVisible = isMobile && !entry.isIntersecting;
+
+          if (shouldBeVisible !== this.isFloatingPreviewVisible()) {
+            this.isFloatingPreviewVisible.set(shouldBeVisible);
+            if (shouldBeVisible) {
+              const defaultX = window.innerWidth - this.floatingWidth() - 20;
+              this.floatingX.set(Math.max(10, defaultX));
+              this.floatingY.set(80);
+
+              setTimeout(() => this.updateCanvasPreview(), 30);
+            }
+          }
+        });
+      }, options);
+
+      this.observer.observe(this.previewCanvas.nativeElement);
+    }, 300);
+  }
+
+  onFloatingDragStart(event: MouseEvent | TouchEvent): void {
+    if (this.isResizing) return;
+    event.preventDefault();
+    this.isDragging = true;
+
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+
+    this.dragStartX = clientX;
+    this.dragStartY = clientY;
+    this.initialFloatingX = this.floatingX();
+    this.initialFloatingY = this.floatingY();
+
+    const moveListener = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!this.isDragging) return;
+      const currentX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - this.dragStartX;
+      const dy = currentY - this.dragStartY;
+
+      let newX = this.initialFloatingX + dx;
+      let newY = this.initialFloatingY + dy;
+
+      const maxX = window.innerWidth - this.floatingWidth() - 10;
+      const maxY = window.innerHeight - this.floatingHeight() - 10;
+      newX = Math.max(10, Math.min(newX, maxX));
+      newY = Math.max(10, Math.min(newY, maxY));
+
+      this.floatingX.set(newX);
+      this.floatingY.set(newY);
+    };
+
+    const endListener = () => {
+      this.isDragging = false;
+      window.removeEventListener('mousemove', moveListener);
+      window.removeEventListener('mouseup', endListener);
+      window.removeEventListener('touchmove', moveListener);
+      window.removeEventListener('touchend', endListener);
+    };
+
+    window.addEventListener('mousemove', moveListener, { passive: false });
+    window.addEventListener('mouseup', endListener);
+    window.addEventListener('touchmove', moveListener, { passive: false });
+    window.addEventListener('touchend', endListener);
+  }
+
+  onFloatingResizeStart(event: MouseEvent | TouchEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isResizing = true;
+
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+
+    this.resizeStartX = clientX;
+    this.resizeStartY = clientY;
+    this.initialWidth = this.floatingWidth();
+    this.initialHeight = this.floatingHeight();
+
+    const moveListener = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!this.isResizing) return;
+      const currentX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - this.resizeStartX;
+      const dy = currentY - this.resizeStartY;
+
+      const delta = Math.max(dx, dy);
+      let newSize = this.initialWidth + delta;
+
+      newSize = Math.max(100, Math.min(newSize, 350));
+
+      this.floatingWidth.set(newSize);
+      this.floatingHeight.set(newSize);
+
+      const maxX = window.innerWidth - newSize - 10;
+      const maxY = window.innerHeight - newSize - 10;
+      if (this.floatingX() > maxX) this.floatingX.set(Math.max(10, maxX));
+      if (this.floatingY() > maxY) this.floatingY.set(Math.max(10, maxY));
+    };
+
+    const endListener = () => {
+      this.isResizing = false;
+      window.removeEventListener('mousemove', moveListener);
+      window.removeEventListener('mouseup', endListener);
+      window.removeEventListener('touchmove', moveListener);
+      window.removeEventListener('touchend', endListener);
+    };
+
+    window.addEventListener('mousemove', moveListener, { passive: false });
+    window.addEventListener('mouseup', endListener);
+    window.addEventListener('touchmove', moveListener, { passive: false });
+    window.addEventListener('touchend', endListener);
+  }
+
+  cycleFloatingSize(event: MouseEvent): void {
+    event.stopPropagation();
+    const currentWidth = this.floatingWidth();
+    let newWidth = 150;
+    if (currentWidth < 150) newWidth = 150;
+    else if (currentWidth === 150) newWidth = 220;
+    else if (currentWidth === 220) newWidth = 300;
+    else newWidth = 100;
+
+    this.floatingWidth.set(newWidth);
+    this.floatingHeight.set(newWidth);
+
+    const maxX = window.innerWidth - newWidth - 10;
+    const maxY = window.innerHeight - newWidth - 10;
+    this.floatingX.set(Math.max(10, Math.min(this.floatingX(), maxX)));
+    this.floatingY.set(Math.max(10, Math.min(this.floatingY(), maxY)));
+
+    setTimeout(() => this.updateCanvasPreview(), 30);
+  }
+
+  ngOnDestroy(): void {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+  }
+
 
   // Single Active Export
   exportImage(): void {
@@ -300,42 +503,90 @@ export class BorderEditorComponent {
   // Bulk Export All Uploaded Files
   async exportAllImages(): Promise<void> {
     const files = this.uploadedFiles();
+
     if (files.length === 0) return;
 
     this.isProcessing.set(true);
-    this.processingTitle.set('Exporting Images');
+    this.processingTitle.set('Preparing ZIP');
     this.processingProgress.set(0);
     this.processingTotal.set(files.length);
     this.processingCurrentName.set('');
     this.processingCompleted.set(false);
     this.cancelRequested.set(false);
 
-    // Create a temporary canvas in memory to render and export consecutively
+    const zip = new JSZip();
     const tempCanvas = document.createElement('canvas');
-    
-    for (let i = 0; i < files.length; i++) {
-      if (this.cancelRequested()) {
-        break;
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+
+        if (this.cancelRequested()) {
+          break;
+        }
+
+        const file = files[i];
+
+        this.processingCurrentName.set(file.name);
+
+        // Render image
+        this.renderImageToCanvas(file, tempCanvas);
+
+        // Convert canvas to blob
+        const blob = await this.canvasToBlob(tempCanvas);
+
+        // Original filename without extension
+        const fileName =
+          file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+
+        // Add to zip
+        zip.file(`${fileName}.png`, blob);
+
+        this.processingProgress.set(i + 1);
+
+        // Allow UI updates
+        await new Promise(resolve => setTimeout(resolve, 10));
       }
 
-      const file = files[i];
-      this.processingCurrentName.set(file.name);
+      if (!this.cancelRequested()) {
+        this.processingTitle.set('Compressing Images...');
 
-      // Render to temporary canvas
-      this.renderImageToCanvas(file, tempCanvas);
+        const zipBlob = await zip.generateAsync(
+          {
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: {
+              level: 6
+            }
+          },
+          (metadata: any) => {
+            // Optional: update progress while zipping
+            this.processingProgress.set(
+              Math.round((metadata.percent / 100) * files.length)
+            );
+          }
+        );
 
-      // Save Canvas asynchronously
-      await this.downloadCanvasAsync(tempCanvas, file.name);
+        saveAs(zipBlob, 'Images.zip');
+      }
 
-      this.processingProgress.set(i + 1);
-
-      // Yield control to browser so loader modal repaint is smooth
-      await new Promise(resolve => setTimeout(resolve, 50));
+      this.processingCompleted.set(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      this.isProcessing.set(false);
     }
-
-    this.processingCompleted.set(true);
   }
-
+  private canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to create image blob'));
+        }
+      }, 'image/png');
+    });
+  }
   private downloadFile(file: ProcessedFile): void {
     if (!this.previewCanvas) return;
     this.downloadCanvasAsync(this.previewCanvas.nativeElement, file.name);
@@ -352,11 +603,11 @@ export class BorderEditorComponent {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
-          
+
           link.download = `${nameWithoutExt}_bordered.${this.exportFormat()}`;
           link.href = url;
           link.click();
-          
+
           // Revoke the temporary Object URL after a delay to ensure download registers
           setTimeout(() => {
             URL.revokeObjectURL(url);
