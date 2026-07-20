@@ -11,6 +11,11 @@
     "install:all": "cd frontend && npm install && cd ../backend && npm install"
   },
   "devDependencies": {
+    "@types/file-saver": "^2.0.7",
     "concurrently": "^9.1.0"
+  },
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1"
   }
 }

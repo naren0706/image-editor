@@ -1,0 +1,298 @@
+<div class="editor-container">
+  <!-- Header -->
+  <header class="editor-header">
+    <div class="header-left">
+      <a href="/dashboard" routerLink="/dashboard" class="btn-back">← Back to Dashboard</a>
+      <h1>Watermark & Text Studio</h1>
+      <p class="subtitle">Overlay text, watermarks, and headers onto your images with precision controls & drag-and-drop
+        placement.</p>
+    </div>
+  </header>
+
+  <!-- Workspace Grid -->
+  <div class="workspace-grid">
+    <!-- Left: Controls Panel -->
+    <aside class="controls-panel">
+      <!-- File Selector (if not loaded) -->
+      @if (!imageLoaded()) {
+      <div class="upload-zone" (dragover)="onDragOver($event)" (drop)="onDrop($event)" (click)="fileInput.click()">
+        <div class="upload-icon">📥</div>
+        <h3>Upload Images</h3>
+        <p>Drag & drop multiple files, or click to browse</p>
+        <span class="upload-limit">Supports PNG, JPEG, WEBP</span>
+        <input #fileInput type="file" (change)="onFilesSelected($event)" accept="image/*" multiple
+          style="display: none;">
+      </div>
+      } @else {
+      <!-- Uploaded Images List -->
+      <div class="control-group">
+        <label>Queue List ({{ uploadedFiles().length }} images)</label>
+        <div class="uploaded-list">
+          @for (file of uploadedFiles(); track file.id; let i = $index) {
+          <div class="list-item" [class.active]="i === activeFileIndex()" (click)="setActiveFile(i)">
+            <span class="item-name">{{ file.name }}</span>
+            <button class="btn-delete" (click)="removeFile(i, $event)" title="Remove from queue">×</button>
+          </div>
+          }
+        </div>
+        <button class="btn-upload-more" (click)="fileInputMore.click()">+ Add More Images</button>
+        <input #fileInputMore type="file" (change)="onFilesSelected($event)" accept="image/*" multiple
+          style="display: none;">
+      </div>
+
+      <!-- Text Box Manager -->
+      <div class="control-group">
+        <label>Text Elements</label>
+        <div class="text-box-manager">
+          <button class="btn-add-text" (click)="addTextOverlay()">+ Add Text Element</button>
+
+          @if (textOverlays().length > 0) {
+          <div class="text-overlays-list">
+            @for (item of textOverlays(); track item.id; let i = $index) {
+            <div class="overlay-item" [class.active]="i === activeTextIndex()" (click)="setActiveTextIndex(i)">
+              <span class="overlay-label">{{ item.text || '(empty text)' }}</span>
+              <button class="btn-remove-text" (click)="removeTextOverlay(i, $event)"
+                title="Delete text overlay">×</button>
+            </div>
+            }
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Active Text Editor Panel -->
+      @if (activeTextIndex() !== null && textOverlays()[activeTextIndex()!]) {
+      <div class="control-group">
+        <label>Text Customization (Item #{{ activeTextIndex()! + 1 }})</label>
+        <div class="card-nested">
+          <!-- Text Value -->
+          <div class="control-group">
+            <input type="text" class="input-field" [ngModel]="textOverlays()[activeTextIndex()!].text"
+              (ngModelChange)="updateActiveTextProperty('text', $event)" placeholder="Enter text here...">
+          </div>
+
+          <!-- Font Choices -->
+          <div class="control-row-dual">
+            <div class="control-group">
+              <label>Font Family</label>
+              <select class="select-field" [ngModel]="textOverlays()[activeTextIndex()!].fontFamily"
+                (ngModelChange)="updateActiveTextProperty('fontFamily', $event)">
+                <option value="Arial">Arial (Sans-Serif)</option>
+                <option value="Montserrat">Montserrat (Modern)</option>
+                <option value="Georgia">Georgia (Classic Serif)</option>
+                <option value="Playfair Display">Playfair Display</option>
+                <option value="Pacifico">Pacifico (Handwritten)</option>
+                <option value="Dancing Script">Dancing Script (Cursive)</option>
+                <option value="Lobster">Lobster (Retro Bold)</option>
+                <option value="Righteous">Righteous (Decorative)</option>
+                <option value="Outfit">Outfit (Clean Sans)</option>
+                <option value="Cinzel">Cinzel (Elegant Serif)</option>
+                <option value="Courier New">Courier New (Monospace)</option>
+                <option value="Impact">Impact (Bold Title)</option>
+                <option value="Times New Roman">Times New Roman (Serif)</option>
+                <option value="Brush Script MT">Brush Script MT (Cursive)</option>
+                @for (customFont of customFontsList(); track customFont) {
+                <option [value]="customFont">{{ customFont }} (Custom)</option>
+                }
+              </select>
+              <div class="control-group" style="margin-top: 6px;">
+                <label style="font-size: 10px;">Load Custom Google Font</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="text" class="input-field" [(ngModel)]="customGoogleFont" (keyup.enter)="loadGoogleFont()"
+                    placeholder="e.g. Lobster, Righteous, Inter" style="padding: 6px 10px;min-width:fit-content;">
+                  <button class="style-toggle-btn" (click)="loadGoogleFont()"
+                    style="padding: 6px 12px; font-size: 12px; white-space: nowrap;min-width:fit-content;">Load</button>
+                </div>
+              </div>
+            </div>
+            <div class="control-group">
+              <label>Font Size (px)</label>
+              <div class="slider-container">
+                <input type="range" min="8" max="250" [ngModel]="textOverlays()[activeTextIndex()!].fontSize"
+                  (ngModelChange)="updateActiveTextProperty('fontSize', $event)">
+                <span class="slider-value">{{ textOverlays()[activeTextIndex()!].fontSize }}px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Text Color and Styles -->
+          <div class="control-row-dual">
+            <div class="control-group">
+              <label>Text Color</label>
+              <div class="color-picker-container">
+                <input type="color" [ngModel]="textOverlays()[activeTextIndex()!].color"
+                  (ngModelChange)="updateActiveTextProperty('color', $event)">
+                <input type="text" class="color-hex" [ngModel]="textOverlays()[activeTextIndex()!].color"
+                  (ngModelChange)="updateActiveTextProperty('color', $event)">
+              </div>
+            </div>
+            <div class="control-group">
+              <label>Font Styles</label>
+              <div class="toggle-group-small">
+                <button class="style-toggle-btn" [class.active]="textOverlays()[activeTextIndex()!].bold"
+                  (click)="updateActiveTextProperty('bold', !textOverlays()[activeTextIndex()!].bold)">B</button>
+                <button class="style-toggle-btn" [class.active]="textOverlays()[activeTextIndex()!].italic"
+                  (click)="updateActiveTextProperty('italic', !textOverlays()[activeTextIndex()!].italic)">I</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Opacity and Alignment -->
+          <div class="control-row-dual">
+            <div class="control-group">
+              <label>Opacity ({{ Math.round(textOverlays()[activeTextIndex()!].opacity * 100) }}%)</label>
+              <div class="slider-container">
+                <input type="range" min="0" max="1" step="0.05" [ngModel]="textOverlays()[activeTextIndex()!].opacity"
+                  (ngModelChange)="updateActiveTextProperty('opacity', $event)">
+              </div>
+            </div>
+            <div class="control-group">
+              <label>Text Align</label>
+              <div class="toggle-group-row">
+                <button class="toggle-btn" [class.active]="textOverlays()[activeTextIndex()!].align === 'left'"
+                  (click)="updateActiveTextProperty('align', 'left')">Left</button>
+                <button class="toggle-btn" [class.active]="textOverlays()[activeTextIndex()!].align === 'center'"
+                  (click)="updateActiveTextProperty('align', 'center')">Center</button>
+                <button class="toggle-btn" [class.active]="textOverlays()[activeTextIndex()!].align === 'right'"
+                  (click)="updateActiveTextProperty('align', 'right')">Right</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Position Sliders -->
+          <div class="control-row-dual">
+            <div class="control-group">
+              <label>X Position ({{ textOverlays()[activeTextIndex()!].xPercent }}%)</label>
+              <div class="slider-container">
+                <input type="range" min="0" max="100" [ngModel]="textOverlays()[activeTextIndex()!].xPercent"
+                  (ngModelChange)="updateActiveTextProperty('xPercent', $event)">
+              </div>
+            </div>
+            <div class="control-group">
+              <label>Y Position ({{ textOverlays()[activeTextIndex()!].yPercent }}%)</label>
+              <div class="slider-container">
+                <input type="range" min="0" max="100" [ngModel]="textOverlays()[activeTextIndex()!].yPercent"
+                  (ngModelChange)="updateActiveTextProperty('yPercent', $event)">
+              </div>
+            </div>
+          </div>
+
+          <!-- Text Outline -->
+          <div class="control-group">
+            <div class="checkbox-container">
+              <input type="checkbox" id="outlineCheck" [ngModel]="textOverlays()[activeTextIndex()!].outlineWidth > 0"
+                (ngModelChange)="updateActiveTextProperty('outlineWidth', $event ? 3 : 0)">
+              <label for="outlineCheck">Add Text Outline (Border)</label>
+            </div>
+
+            @if (textOverlays()[activeTextIndex()!].outlineWidth > 0) {
+            <div class="control-row-dual" style="margin-top: 8px;">
+              <div class="control-group">
+                <label>Outline Color</label>
+                <input type="color" class="input-field" style="padding:0; height:32px; cursor:pointer;"
+                  [ngModel]="textOverlays()[activeTextIndex()!].outlineColor"
+                  (ngModelChange)="updateActiveTextProperty('outlineColor', $event)">
+              </div>
+              <div class="control-group">
+                <label>Thickness ({{ textOverlays()[activeTextIndex()!].outlineWidth }}px)</label>
+                <div class="slider-container">
+                  <input type="range" min="1" max="15" [ngModel]="textOverlays()[activeTextIndex()!].outlineWidth"
+                    (ngModelChange)="updateActiveTextProperty('outlineWidth', $event)">
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+
+          <!-- Text Shadow/Glow -->
+          <div class="control-group">
+            <div class="checkbox-container">
+              <input type="checkbox" id="shadowCheck" [ngModel]="textOverlays()[activeTextIndex()!].shadowEnabled"
+                (ngModelChange)="updateActiveTextProperty('shadowEnabled', $event)">
+              <label for="shadowCheck">Add Shadow / Glow</label>
+            </div>
+
+            @if (textOverlays()[activeTextIndex()!].shadowEnabled) {
+            <div class="control-row-dual" style="margin-top: 8px;">
+              <div class="control-group">
+                <label>Shadow Color</label>
+                <select class="select-field" [ngModel]="textOverlays()[activeTextIndex()!].shadowColor"
+                  (ngModelChange)="updateActiveTextProperty('shadowColor', $event)">
+                  <option value="rgba(0, 0, 0, 0.5)">Semi-Transparent Black</option>
+                  <option value="rgba(0, 0, 0, 0.8)">Dark Black</option>
+                  <option value="rgba(255, 255, 255, 0.6)">Soft White Glow</option>
+                  <option value="rgba(59, 130, 246, 0.5)">Soft Blue Glow</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <label>Blur ({{ textOverlays()[activeTextIndex()!].shadowBlur }}px)</label>
+                <div class="slider-container">
+                  <input type="range" min="2" max="30" [ngModel]="textOverlays()[activeTextIndex()!].shadowBlur"
+                    (ngModelChange)="updateActiveTextProperty('shadowBlur', $event)">
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+
+        </div>
+      </div>
+      }
+
+      <!-- Export Settings -->
+      <div class="control-group">
+        <label>Export Format</label>
+        <div class="toggle-group-row">
+          <button class="toggle-btn" [class.active]="exportFormat() === 'png'" (click)="exportFormat.set('png')">PNG
+            (Lossless)</button>
+          <button class="toggle-btn" [class.active]="exportFormat() === 'jpeg'"
+            (click)="exportFormat.set('jpeg')">JPEG</button>
+        </div>
+      </div>
+
+      @if (exportFormat() === 'jpeg') {
+      <div class="control-group">
+        <label>JPEG Quality</label>
+        <div class="slider-container">
+          <input type="range" min="50" max="100" [ngModel]="jpegQuality()" (ngModelChange)="jpegQuality.set($event)">
+          <span class="slider-value">{{ jpegQuality() }}%</span>
+        </div>
+      </div>
+      }
+
+      <div class="action-buttons">
+        <button class="btn-primary" (click)="exportImage()">Export Selected</button>
+        @if (uploadedFiles().length > 1) {
+        <button class="btn-primary bulk" (click)="exportAllImages()">Export All ({{ uploadedFiles().length }})</button>
+        }
+        <button class="btn-secondary" (click)="resetEditor()">Reset Studio</button>
+      </div>
+      }
+    </aside>
+
+    <!-- Right: Preview Display -->
+    <main class="preview-panel">
+      @if (imageLoaded() && uploadedFiles().length > 0) {
+      <div class="preview-container">
+        <div class="drag-instructions-toast">
+          💡 Drag & drop text overlays directly on the canvas to place them! Click any text box to edit its settings.
+        </div>
+        <div class="canvas-wrapper">
+          <canvas #previewCanvas (mousedown)="onCanvasMouseDown($event)" (mousemove)="onCanvasMouseMove($event)"
+            (mouseup)="onCanvasMouseUp()" (mouseleave)="onCanvasMouseUp()" (touchstart)="onCanvasTouchStart($event)"
+            (touchmove)="onCanvasTouchMove($event)" (touchend)="onCanvasTouchEnd()"></canvas>
+        </div>
+        <div class="image-meta">
+          <span>Name: {{ uploadedFiles()[activeFileIndex()]?.name }}</span>
+          <span>Target Resolution: {{ previewCanvas.width }} x {{ previewCanvas.height }}</span>
+        </div>
+      </div>
+      } @else {
+      <div class="preview-empty">
+        <div class="empty-icon">💧</div>
+        <p>Your workspace preview will appear here once images are uploaded.</p>
+      </div>
+      }
+    </main>
+  </div>
+</div>

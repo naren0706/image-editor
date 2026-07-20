@@ -124,7 +124,7 @@
       <div class="control-group card-nested">
         <label>Shadow Blur Radius</label>
         <div class="slider-container">
-          <input type="range" min="0" max="80" [ngModel]="shadowBlur()"
+          <input type="range" min="0" max="800" [ngModel]="shadowBlur()"
             (ngModelChange)="shadowBlur.set($event); onOptionChange()">
           <span class="slider-value">{{ shadowBlur() }}px</span>
         </div>
@@ -212,11 +212,11 @@
         <h2>{{ processingTitle() }}</h2>
         <p class="modal-subtitle">
           @if (processingCompleted() && !cancelRequested()) {
-            Completed successfully!
+          Completed successfully!
           } @else if (cancelRequested()) {
-            Process canceled.
+          Process canceled.
           } @else {
-            Please wait while we process your files...
+          Please wait while we process your files...
           }
         </p>
       </div>
@@ -225,10 +225,12 @@
         <div class="progress-container">
           <div class="progress-circle-wrapper">
             <svg class="progress-ring" width="120" height="120">
-              <circle class="progress-ring__background" stroke="var(--border-color)" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
-              <circle class="progress-ring__circle" stroke="url(#progress-gradient)" stroke-width="8" stroke-linecap="round" fill="transparent" r="50" cx="60" cy="60"
+              <circle class="progress-ring__background" stroke="var(--border-color)" stroke-width="8" fill="transparent"
+                r="50" cx="60" cy="60" />
+              <circle class="progress-ring__circle" stroke="url(#progress-gradient)" stroke-width="8"
+                stroke-linecap="round" fill="transparent" r="50" cx="60" cy="60"
                 [style.strokeDashoffset]="progressDashoffset()"
-                style="stroke-dasharray: 314.16; transition: stroke-dashoffset 0.3s ease;"/>
+                style="stroke-dasharray: 314.16; transition: stroke-dashoffset 0.3s ease;" />
               <defs>
                 <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stop-color="#3b82f6" />
@@ -253,11 +255,29 @@
 
       <div class="modal-footer">
         @if (!processingCompleted()) {
-          <button class="btn-cancel" (click)="cancelProcessing()">Cancel</button>
+        <button class="btn-cancel" (click)="cancelProcessing()">Cancel</button>
         } @else {
-          <button class="btn-success-close" (click)="closeModal()">Done</button>
+        <button class="btn-success-close" (click)="closeModal()">Done</button>
         }
       </div>
+    </div>
+  </div>
+  }
+  <!-- Floating Picture-in-Picture Preview on Mobile -->
+  @if (imageLoaded() && uploadedFiles().length > 0 && isFloatingPreviewVisible()) {
+  <div class="floating-preview-container" [style.top.px]="floatingY()" [style.left.px]="floatingX()"
+    [style.width.px]="floatingWidth()" [style.height.px]="floatingHeight()" (mousedown)="onFloatingDragStart($event)"
+    (touchstart)="onFloatingDragStart($event)">
+    <div class="floating-header">
+      <span class="drag-handle-indicator">⋮⋮ Drag Preview</span>
+      <button class="floating-resize-btn" (click)="cycleFloatingSize($event)">
+        🔍 {{ floatingWidth() }}px
+      </button>
+    </div>
+    <div class="floating-canvas-wrapper">
+      <canvas #floatingCanvas></canvas>
+    </div>
+    <div class="resize-handle" (mousedown)="onFloatingResizeStart($event)" (touchstart)="onFloatingResizeStart($event)">
     </div>
   </div>
   }

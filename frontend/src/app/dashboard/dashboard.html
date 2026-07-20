@@ -19,7 +19,7 @@
         <span class="nav-icon">📐</span>
         <span class="nav-label">Resizer & Crop</span>
       </a>
-      <a class="nav-item disabled" title="Coming Soon">
+      <a class="nav-item" routerLink="/watermark-studio">
         <span class="nav-icon">💧</span>
         <span class="nav-label">Watermark Studio</span>
       </a>
@@ -70,14 +70,16 @@
           </div>
         </div>
 
-        <div class="module-card locked">
-          <div class="card-badge tag-soon">Coming Soon</div>
+        <a routerLink="/watermark-studio" class="module-card featured">
+          <div class="card-glow"></div>
+          <div class="card-badge">Lossless</div>
           <div class="card-icon">💧</div>
           <div class="card-content">
             <h3>Watermark Studio</h3>
-            <p>Overlay logos, text metadata headers, copyright stamps, and signature marks in bulk batches.</p>
+            <p>Overlay text watermarks, custom titles, copyright marks, and stamps with different fonts and direct drag placement.</p>
+            <span class="btn-action">Open Studio →</span>
           </div>
-        </div>
+        </a>
       </section>
 
       <!-- System Statistics Panel -->
