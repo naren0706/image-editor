@@ -73,6 +73,7 @@ export class BorderEditorComponent implements OnDestroy {
   processingCurrentName = signal<string>('');
   processingCompleted = signal<boolean>(false);
   cancelRequested = signal<boolean>(false);
+  generatedZipBlob = signal<Blob | null>(null);
 
   // Computed progress values
   processingPercentage = computed(() => {
@@ -566,7 +567,8 @@ export class BorderEditorComponent implements OnDestroy {
           }
         );
 
-        saveAs(zipBlob, 'Images.zip');
+        this.generatedZipBlob.set(zipBlob);
+        this.downloadZip();
       }
 
       this.processingCompleted.set(true);
@@ -590,6 +592,23 @@ export class BorderEditorComponent implements OnDestroy {
   private downloadFile(file: ProcessedFile): void {
     if (!this.previewCanvas) return;
     this.downloadCanvasAsync(this.previewCanvas.nativeElement, file.name);
+  }
+
+  downloadZip(): void {
+    const blob = this.generatedZipBlob();
+    if (!blob) return;
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Images.zip';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 2000);
   }
 
   private downloadCanvasAsync(canvas: HTMLCanvasElement, filename: string): Promise<void> {
@@ -620,12 +639,14 @@ export class BorderEditorComponent implements OnDestroy {
 
   cancelProcessing(): void {
     this.cancelRequested.set(true);
+    this.generatedZipBlob.set(null);
     this.closeModal();
   }
 
   closeModal(): void {
     this.isProcessing.set(false);
     this.processingCompleted.set(false);
+    this.generatedZipBlob.set(null);
   }
 
   resetEditor(): void {
