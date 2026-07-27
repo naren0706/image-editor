@@ -253,12 +253,18 @@
         </div>
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer" style="flex-direction: column; align-items: center; gap: 12px;">
         @if (!processingCompleted()) {
         <button class="btn-cancel" (click)="cancelProcessing()">Cancel</button>
         } @else {
-        @if (generatedZipBlob()) {
-        <button class="btn-download-zip" (click)="downloadZip()">Download ZIP</button>
+        @if (generatedZipParts().length > 0) {
+        <div class="zip-download-parts" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; margin-bottom: 8px;">
+          @for (part of generatedZipParts(); track part.name) {
+          <button class="btn-download-zip" (click)="downloadZipPart(part.blob, part.name)">
+            Download {{ part.name }}
+          </button>
+          }
+        </div>
         }
         <button class="btn-success-close" (click)="closeModal()">Done</button>
         }

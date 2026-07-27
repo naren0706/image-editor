@@ -73,7 +73,7 @@ export class BorderEditorComponent implements OnDestroy {
   processingCurrentName = signal<string>('');
   processingCompleted = signal<boolean>(false);
   cancelRequested = signal<boolean>(false);
-  generatedZipBlob = signal<Blob | null>(null);
+  generatedZipParts = signal<{ name: string; blob: Blob }[]>([]);
 
   // Computed progress values
   processingPercentage = computed(() => {
@@ -514,19 +514,23 @@ export class BorderEditorComponent implements OnDestroy {
     this.processingCurrentName.set('');
     this.processingCompleted.set(false);
     this.cancelRequested.set(false);
+    this.generatedZipParts.set([]);
 
-    const zip = new JSZip();
     const tempCanvas = document.createElement('canvas');
+    const batchSize = 5;
+    const parts: { name: string; blob: Blob }[] = [];
 
     try {
-      for (let i = 0; i < files.length; i++) {
+      let currentZip = new JSZip();
+      let currentBatchCount = 0;
+      let partNumber = 1;
 
+      for (let i = 0; i < files.length; i++) {
         if (this.cancelRequested()) {
           break;
         }
 
         const file = files[i];
-
         this.processingCurrentName.set(file.name);
 
         // Render image
@@ -535,40 +539,46 @@ export class BorderEditorComponent implements OnDestroy {
         // Convert canvas to blob
         const blob = await this.canvasToBlob(tempCanvas);
 
-        // Original filename without extension
-        const fileName =
-          file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        const ext = this.exportFormat();
+        const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
 
         // Add to zip
-        zip.file(`${fileName}.png`, blob);
-
+        currentZip.file(`${fileName}_bordered.${ext}`, blob);
+        currentBatchCount++;
         this.processingProgress.set(i + 1);
+
+        // If batch is full, or this is the last file, generate the zip part
+        const isLastFile = i === files.length - 1;
+        if (currentBatchCount === batchSize || isLastFile) {
+          this.processingTitle.set(`Creating ZIP Part ${partNumber}...`);
+
+          const zipBlob = await currentZip.generateAsync({
+            type: 'blob',
+            compression: 'STORE'
+          });
+
+          const partName = files.length <= batchSize
+            ? 'Images.zip'
+            : `Images_Part_${partNumber}.zip`;
+
+          parts.push({ name: partName, blob: zipBlob });
+
+          // Start a new batch
+          currentZip = new JSZip();
+          currentBatchCount = 0;
+          partNumber++;
+        }
 
         // Allow UI updates
         await new Promise(resolve => setTimeout(resolve, 10));
       }
 
       if (!this.cancelRequested()) {
-        this.processingTitle.set('Compressing Images...');
-
-        const zipBlob = await zip.generateAsync(
-          {
-            type: 'blob',
-            compression: 'DEFLATE',
-            compressionOptions: {
-              level: 6
-            }
-          },
-          (metadata: any) => {
-            // Optional: update progress while zipping
-            this.processingProgress.set(
-              Math.round((metadata.percent / 100) * files.length)
-            );
-          }
-        );
-
-        this.generatedZipBlob.set(zipBlob);
-        this.downloadZip();
+        this.generatedZipParts.set(parts);
+        // Automatically trigger the first part
+        if (parts.length > 0) {
+          this.downloadZipPart(parts[0].blob, parts[0].name);
+        }
       }
 
       this.processingCompleted.set(true);
@@ -580,13 +590,17 @@ export class BorderEditorComponent implements OnDestroy {
   }
   private canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     return new Promise((resolve, reject) => {
+      const format = this.exportFormat();
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+      const quality = format === 'png' ? undefined : (this.jpegQuality() / 100);
+
       canvas.toBlob((blob) => {
         if (blob) {
           resolve(blob);
         } else {
           reject(new Error('Failed to create image blob'));
         }
-      }, 'image/png');
+      }, mimeType, quality);
     });
   }
   private downloadFile(file: ProcessedFile): void {
@@ -594,14 +608,11 @@ export class BorderEditorComponent implements OnDestroy {
     this.downloadCanvasAsync(this.previewCanvas.nativeElement, file.name);
   }
 
-  downloadZip(): void {
-    const blob = this.generatedZipBlob();
-    if (!blob) return;
-
+  downloadZipPart(blob: Blob, name: string): void {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'Images.zip';
+    link.download = name;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -639,14 +650,14 @@ export class BorderEditorComponent implements OnDestroy {
 
   cancelProcessing(): void {
     this.cancelRequested.set(true);
-    this.generatedZipBlob.set(null);
+    this.generatedZipParts.set([]);
     this.closeModal();
   }
 
   closeModal(): void {
     this.isProcessing.set(false);
     this.processingCompleted.set(false);
-    this.generatedZipBlob.set(null);
+    this.generatedZipParts.set([]);
   }
 
   resetEditor(): void {
