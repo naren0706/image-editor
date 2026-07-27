@@ -580,7 +580,6 @@ export class BorderEditorComponent implements OnDestroy {
       this.processingCompleted.set(true);
     } catch (err) {
       console.error(err);
-    } finally {
       this.isProcessing.set(false);
     }
   }
