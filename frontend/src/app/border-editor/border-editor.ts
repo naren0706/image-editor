@@ -575,16 +575,11 @@ export class BorderEditorComponent implements OnDestroy {
 
       if (!this.cancelRequested()) {
         this.generatedZipParts.set(parts);
-        // Automatically trigger the first part
-        if (parts.length > 0) {
-          this.downloadZipPart(parts[0].blob, parts[0].name);
-        }
       }
 
       this.processingCompleted.set(true);
     } catch (err) {
       console.error(err);
-    } finally {
       this.isProcessing.set(false);
     }
   }
