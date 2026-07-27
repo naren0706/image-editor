@@ -634,6 +634,25 @@ canvas {
   width: 100%;
   display: flex;
   justify-content: center;
+  gap: 12px;
+}
+
+.btn-download-zip {
+  background: var(--accent-gradient);
+  border: none;
+  color: #ffffff;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn-download-zip:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .btn-cancel {

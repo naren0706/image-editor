@@ -257,6 +257,9 @@
         @if (!processingCompleted()) {
         <button class="btn-cancel" (click)="cancelProcessing()">Cancel</button>
         } @else {
+        @if (generatedZipBlob()) {
+        <button class="btn-download-zip" (click)="downloadZip()">Download ZIP</button>
+        }
         <button class="btn-success-close" (click)="closeModal()">Done</button>
         }
       </div>
