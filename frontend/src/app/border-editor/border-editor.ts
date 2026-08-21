@@ -94,6 +94,7 @@ export class BorderEditorComponent implements OnDestroy {
   borderWidthX = signal<number>(20);
   borderWidthY = signal<number>(20);
   borderColor = signal<string>('#ffffff');
+  aspectRatio = signal<string>('original');
 
   // Advanced Configurations
   borderRadius = signal<number>(0);
@@ -256,8 +257,32 @@ export class BorderEditorComponent implements OnDestroy {
     const shadowPaddingBottom = 0;
 
     // Set canvas dimensions to include original image size + borders (without shadow padding)
-    const targetWidth = img.width + (bX * 2);
-    const targetHeight = img.height + (bY * 2);
+    let targetWidth = img.width + (bX * 2);
+    let targetHeight = img.height + (bY * 2);
+
+    const ratioMode = this.aspectRatio();
+    if (ratioMode !== 'original') {
+      let r = 1;
+      if (ratioMode === '1:1') r = 1;
+      else if (ratioMode === '4:5') r = 4 / 5;
+      else if (ratioMode === '9:16') r = 9 / 16;
+      else if (ratioMode === '16:9') r = 16 / 9;
+      else if (ratioMode === '4:3') r = 4 / 3;
+      else if (ratioMode === '3:2') r = 3 / 2;
+      else if (ratioMode === '2:3') r = 2 / 3;
+
+      const minWidth = img.width + (bX * 2);
+      const minHeight = img.height + (bY * 2);
+
+      const widthCandidate = minHeight * r;
+      if (widthCandidate >= minWidth) {
+        targetWidth = Math.round(widthCandidate);
+        targetHeight = Math.round(minHeight);
+      } else {
+        targetWidth = Math.round(minWidth);
+        targetHeight = Math.round(minWidth / r);
+      }
+    }
 
     canvas.width = targetWidth;
     canvas.height = targetHeight;
@@ -268,6 +293,10 @@ export class BorderEditorComponent implements OnDestroy {
 
     // Prepare clipping path for border radius + shadow if enabled
     ctx.save();
+
+    // Image coordinates offset centered inside target canvas
+    const imgX = (targetWidth - img.width) / 2;
+    const imgY = (targetHeight - img.height) / 2;
 
     if (this.shadowEnabled()) {
       ctx.shadowColor = this.shadowColor();
@@ -280,11 +309,11 @@ export class BorderEditorComponent implements OnDestroy {
       const radius = this.borderRadius();
       if (radius > 0) {
         ctx.beginPath();
-        ctx.roundRect(bX, bY, img.width, img.height, radius);
+        ctx.roundRect(imgX, imgY, img.width, img.height, radius);
         ctx.closePath();
         ctx.fill();
       } else {
-        ctx.fillRect(bX, bY, img.width, img.height);
+        ctx.fillRect(imgX, imgY, img.width, img.height);
       }
 
       // Reset shadow properties so the image itself isn't double-shadowed
@@ -293,10 +322,6 @@ export class BorderEditorComponent implements OnDestroy {
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
     }
-
-    // Image coordinates offset by border width
-    const imgX = bX;
-    const imgY = bY;
 
     // Clip rounded corners on inner image if radius > 0
     const radius = this.borderRadius();

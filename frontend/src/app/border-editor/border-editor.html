@@ -40,6 +40,22 @@
           style="display: none;">
       </div>
 
+      <!-- Canvas Aspect Ratio Selection -->
+      <div class="control-group">
+        <label>Canvas Aspect Ratio</label>
+        <select [ngModel]="aspectRatio()" (ngModelChange)="aspectRatio.set($event); onOptionChange()"
+          class="select-field">
+          <option value="original">Original (Free)</option>
+          <option value="1:1">1:1 (Square)</option>
+          <option value="4:5">4:5 (Portrait / Instagram)</option>
+          <option value="9:16">9:16 (Story / Reels)</option>
+          <option value="16:9">16:9 (Landscape / Widescreen)</option>
+          <option value="4:3">4:3 (Standard Landscape)</option>
+          <option value="3:2">3:2 (Classic Landscape)</option>
+          <option value="2:3">2:3 (Classic Portrait)</option>
+        </select>
+      </div>
+
       <!-- Border Dimensions Configurations -->
       <div class="control-group">
         <label>Border Mode</label>
