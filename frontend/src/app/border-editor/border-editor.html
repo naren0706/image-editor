@@ -228,6 +228,41 @@
       </div>
       }
 
+      <!-- EXIF Camera Frame Overlay -->
+      <div class="control-group">
+        <div class="checkbox-container">
+          <input type="checkbox" id="exifCheck" [ngModel]="exifFrameEnabled()"
+            (ngModelChange)="exifFrameEnabled.set($event); onOptionChange()">
+          <label for="exifCheck">EXIF Camera Frame</label>
+        </div>
+      </div>
+
+      @if (exifFrameEnabled()) {
+      <div class="control-group card-nested">
+        <label>Frame Style</label>
+        <div class="toggle-group">
+          <button [class.active]="exifFrameStyle() === 'minimal'"
+            (click)="exifFrameStyle.set('minimal'); onOptionChange()">Minimal Info</button>
+          <button [class.active]="exifFrameStyle() === 'polaroid'"
+            (click)="exifFrameStyle.set('polaroid'); onOptionChange()">Polaroid Style</button>
+        </div>
+
+        <label>EXIF Font Size</label>
+        <div class="slider-container">
+          <input type="range" min="8" max="40" [ngModel]="exifFontSize()"
+            (ngModelChange)="exifFontSize.set($event); onOptionChange()">
+          <span class="slider-value">{{ exifFontSize() }}px</span>
+        </div>
+
+        <label>Text Color</label>
+        <div class="color-picker-container">
+          <input type="color" [ngModel]="exifTextColor()" (ngModelChange)="exifTextColor.set($event); onOptionChange()">
+          <input type="text" class="color-hex" [ngModel]="exifTextColor()"
+            (ngModelChange)="exifTextColor.set($event); onOptionChange()">
+        </div>
+      </div>
+      }
+
       <!-- Export settings -->
       <div class="control-group">
         <label>Export Format</label>
