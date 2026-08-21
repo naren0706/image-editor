@@ -95,6 +95,12 @@ export class BorderEditorComponent implements OnDestroy {
   borderWidthY = signal<number>(20);
   borderColor = signal<string>('#ffffff');
   aspectRatio = signal<string>('original');
+  backgroundType = signal<'solid' | 'gradient' | 'blur'>('solid');
+  gradientColorStart = signal<string>('#3b82f6');
+  gradientColorEnd = signal<string>('#8b5cf6');
+  gradientAngle = signal<number>(135);
+  blurAmount = signal<number>(40);
+  blurBrightness = signal<number>(80);
 
   // Advanced Configurations
   borderRadius = signal<number>(0);
@@ -287,9 +293,33 @@ export class BorderEditorComponent implements OnDestroy {
     canvas.width = targetWidth;
     canvas.height = targetHeight;
 
-    // Draw background/border color covering the entire canvas
-    ctx.fillStyle = this.borderColor();
-    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    // Draw background cover
+    if (this.backgroundType() === 'solid') {
+      ctx.fillStyle = this.borderColor();
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+    } else if (this.backgroundType() === 'gradient') {
+      const rad = (this.gradientAngle() * Math.PI) / 180;
+      const x0 = targetWidth / 2 - Math.cos(rad) * (targetWidth / 2);
+      const y0 = targetHeight / 2 - Math.sin(rad) * (targetHeight / 2);
+      const x1 = targetWidth / 2 + Math.cos(rad) * (targetWidth / 2);
+      const y1 = targetHeight / 2 + Math.sin(rad) * (targetHeight / 2);
+
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, this.gradientColorStart());
+      grad.addColorStop(1, this.gradientColorEnd());
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+    } else if (this.backgroundType() === 'blur') {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+      ctx.save();
+      ctx.filter = `blur(${this.blurAmount()}px) brightness(${this.blurBrightness() / 100})`;
+      const bleed = this.blurAmount() * 2;
+      ctx.drawImage(img, -bleed, -bleed, targetWidth + bleed * 2, targetHeight + bleed * 2);
+      ctx.restore();
+    }
 
     // Prepare clipping path for border radius + shadow if enabled
     ctx.save();
