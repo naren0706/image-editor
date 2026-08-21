@@ -95,9 +95,23 @@
       </div>
       }
 
-      <!-- Border Color -->
+      <!-- Background Style Selection -->
       <div class="control-group">
-        <label>Border Color</label>
+        <label>Background Style</label>
+        <div class="toggle-group">
+          <button [class.active]="backgroundType() === 'solid'"
+            (click)="backgroundType.set('solid'); onOptionChange()">Solid</button>
+          <button [class.active]="backgroundType() === 'gradient'"
+            (click)="backgroundType.set('gradient'); onOptionChange()">Gradient</button>
+          <button [class.active]="backgroundType() === 'blur'"
+            (click)="backgroundType.set('blur'); onOptionChange()">Blurred</button>
+        </div>
+      </div>
+
+      <!-- Solid Border Color -->
+      @if (backgroundType() === 'solid') {
+      <div class="control-group">
+        <label>Background Color</label>
         <div class="color-picker-container">
           <input type="color" [ngModel]="borderColor()" (ngModelChange)="borderColor.set($event); onOptionChange()">
           <input type="text" class="color-hex" [ngModel]="borderColor()"
@@ -116,6 +130,50 @@
             (click)="borderColor.set('#ef4444'); onOptionChange()"></button>
         </div>
       </div>
+      }
+
+      <!-- Gradient Configs -->
+      @if (backgroundType() === 'gradient') {
+      <div class="control-group card-nested">
+        <label>Gradient Start Color</label>
+        <div class="color-picker-container">
+          <input type="color" [ngModel]="gradientColorStart()" (ngModelChange)="gradientColorStart.set($event); onOptionChange()">
+          <input type="text" class="color-hex" [ngModel]="gradientColorStart()" (ngModelChange)="gradientColorStart.set($event); onOptionChange()">
+        </div>
+
+        <label>Gradient End Color</label>
+        <div class="color-picker-container">
+          <input type="color" [ngModel]="gradientColorEnd()" (ngModelChange)="gradientColorEnd.set($event); onOptionChange()">
+          <input type="text" class="color-hex" [ngModel]="gradientColorEnd()" (ngModelChange)="gradientColorEnd.set($event); onOptionChange()">
+        </div>
+
+        <label>Gradient Angle</label>
+        <div class="slider-container">
+          <input type="range" min="0" max="360" [ngModel]="gradientAngle()"
+            (ngModelChange)="gradientAngle.set($event); onOptionChange()">
+          <span class="slider-value">{{ gradientAngle() }}°</span>
+        </div>
+      </div>
+      }
+
+      <!-- Blurred Background Configs -->
+      @if (backgroundType() === 'blur') {
+      <div class="control-group card-nested">
+        <label>Blur Intensity</label>
+        <div class="slider-container">
+          <input type="range" min="5" max="150" [ngModel]="blurAmount()"
+            (ngModelChange)="blurAmount.set($event); onOptionChange()">
+          <span class="slider-value">{{ blurAmount() }}px</span>
+        </div>
+
+        <label>Background Brightness</label>
+        <div class="slider-container">
+          <input type="range" min="10" max="100" [ngModel]="blurBrightness()"
+            (ngModelChange)="blurBrightness.set($event); onOptionChange()">
+          <span class="slider-value">{{ blurBrightness() }}%</span>
+        </div>
+      </div>
+      }
 
       <!-- Corner Radius Config -->
       <div class="control-group">
@@ -167,6 +225,41 @@
           <option value="rgba(0, 0, 0, 0.85)">Dark Black (85%)</option>
           <option value="rgba(59, 130, 246, 0.4)">Glow Blue</option>
         </select>
+      </div>
+      }
+
+      <!-- EXIF Camera Frame Overlay -->
+      <div class="control-group">
+        <div class="checkbox-container">
+          <input type="checkbox" id="exifCheck" [ngModel]="exifFrameEnabled()"
+            (ngModelChange)="exifFrameEnabled.set($event); onOptionChange()">
+          <label for="exifCheck">EXIF Camera Frame</label>
+        </div>
+      </div>
+
+      @if (exifFrameEnabled()) {
+      <div class="control-group card-nested">
+        <label>Frame Style</label>
+        <div class="toggle-group">
+          <button [class.active]="exifFrameStyle() === 'minimal'"
+            (click)="exifFrameStyle.set('minimal'); onOptionChange()">Minimal Info</button>
+          <button [class.active]="exifFrameStyle() === 'polaroid'"
+            (click)="exifFrameStyle.set('polaroid'); onOptionChange()">Polaroid Style</button>
+        </div>
+
+        <label>EXIF Font Size</label>
+        <div class="slider-container">
+          <input type="range" min="8" max="40" [ngModel]="exifFontSize()"
+            (ngModelChange)="exifFontSize.set($event); onOptionChange()">
+          <span class="slider-value">{{ exifFontSize() }}px</span>
+        </div>
+
+        <label>Text Color</label>
+        <div class="color-picker-container">
+          <input type="color" [ngModel]="exifTextColor()" (ngModelChange)="exifTextColor.set($event); onOptionChange()">
+          <input type="text" class="color-hex" [ngModel]="exifTextColor()"
+            (ngModelChange)="exifTextColor.set($event); onOptionChange()">
+        </div>
       </div>
       }
 

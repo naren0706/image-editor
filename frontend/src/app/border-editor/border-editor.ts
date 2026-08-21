@@ -11,6 +11,10 @@ interface ProcessedFile {
   width: number;
   height: number;
   objectUrl?: string;
+  exifData?: {
+    camera?: string;
+    settings?: string;
+  };
 }
 
 @Component({
@@ -95,6 +99,18 @@ export class BorderEditorComponent implements OnDestroy {
   borderWidthY = signal<number>(20);
   borderColor = signal<string>('#ffffff');
   aspectRatio = signal<string>('original');
+  backgroundType = signal<'solid' | 'gradient' | 'blur'>('solid');
+  gradientColorStart = signal<string>('#3b82f6');
+  gradientColorEnd = signal<string>('#8b5cf6');
+  gradientAngle = signal<number>(135);
+  blurAmount = signal<number>(40);
+  blurBrightness = signal<number>(80);
+
+  // EXIF Configurations
+  exifFrameEnabled = signal<boolean>(false);
+  exifFrameStyle = signal<'minimal' | 'polaroid'>('minimal');
+  exifFontSize = signal<number>(14);
+  exifTextColor = signal<string>('#333333');
 
   // Advanced Configurations
   borderRadius = signal<number>(0);
@@ -153,13 +169,15 @@ export class BorderEditorComponent implements OnDestroy {
 
       try {
         const imgElement = await this.loadImageAsync(file);
+        const exifData = await this.getExifData(imgElement);
         loadedList.push({
           id: crypto.randomUUID(),
           name: file.name,
           imgElement: imgElement,
           width: imgElement.width,
           height: imgElement.height,
-          objectUrl: imgElement.src
+          objectUrl: imgElement.src,
+          exifData: exifData
         });
       } catch (err) {
         console.error('Failed to load image:', file.name, err);
@@ -189,6 +207,56 @@ export class BorderEditorComponent implements OnDestroy {
       setTimeout(() => {
         this.closeModal();
       }, 800);
+    }
+  }
+
+  private async getExifData(img: HTMLImageElement): Promise<{ camera?: string; settings?: string } | undefined> {
+    try {
+      const EXIF = (await import('exif-js')).default;
+      return new Promise((resolve) => {
+        EXIF.getData(img as any, function(this: any) {
+          const allTags = EXIF.getAllTags(this);
+          if (!allTags || Object.keys(allTags).length === 0) {
+            resolve(undefined);
+            return;
+          }
+          const make = allTags.Make || '';
+          const model = allTags.Model || '';
+          let camera = `${make} ${model}`.trim();
+          if (camera) {
+            camera = camera.replace(/corporation/gi, '').replace(/\s+/g, ' ').trim();
+          }
+
+          const parts: string[] = [];
+          if (allTags.FocalLength) {
+            const fl = parseFloat(allTags.FocalLength);
+            if (!isNaN(fl)) parts.push(`${Math.round(fl)}mm`);
+          }
+          if (allTags.FNumber) {
+            const f = parseFloat(allTags.FNumber);
+            if (!isNaN(f)) parts.push(`f/${f}`);
+          }
+          if (allTags.ExposureTime) {
+            const et = parseFloat(allTags.ExposureTime);
+            if (!isNaN(et)) {
+              if (et < 1) {
+                parts.push(`1/${Math.round(1 / et)}s`);
+              } else {
+                parts.push(`${et}s`);
+              }
+            }
+          }
+          if (allTags.ISOSpeedRatings) {
+            parts.push(`ISO ${allTags.ISOSpeedRatings}`);
+          }
+
+          const settings = parts.join('   ');
+          resolve({ camera, settings });
+        });
+      });
+    } catch (e) {
+      console.warn('Failed to parse EXIF:', e);
+      return undefined;
     }
   }
 
@@ -256,9 +324,13 @@ export class BorderEditorComponent implements OnDestroy {
     const shadowPaddingTop = 0;
     const shadowPaddingBottom = 0;
 
+    // Calculate EXIF text space requirements
+    const scaledFontSize = Math.max(12, Math.round(((img.width + bX * 2) / 1000) * this.exifFontSize()));
+    const exifSpace = this.exifFrameEnabled() && file.exifData ? scaledFontSize * 2.5 : 0;
+
     // Set canvas dimensions to include original image size + borders (without shadow padding)
     let targetWidth = img.width + (bX * 2);
-    let targetHeight = img.height + (bY * 2);
+    let targetHeight = img.height + (bY * 2) + exifSpace;
 
     const ratioMode = this.aspectRatio();
     if (ratioMode !== 'original') {
@@ -272,7 +344,7 @@ export class BorderEditorComponent implements OnDestroy {
       else if (ratioMode === '2:3') r = 2 / 3;
 
       const minWidth = img.width + (bX * 2);
-      const minHeight = img.height + (bY * 2);
+      const minHeight = img.height + (bY * 2) + exifSpace;
 
       const widthCandidate = minHeight * r;
       if (widthCandidate >= minWidth) {
@@ -287,16 +359,40 @@ export class BorderEditorComponent implements OnDestroy {
     canvas.width = targetWidth;
     canvas.height = targetHeight;
 
-    // Draw background/border color covering the entire canvas
-    ctx.fillStyle = this.borderColor();
-    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    // Draw background cover
+    if (this.backgroundType() === 'solid') {
+      ctx.fillStyle = this.borderColor();
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+    } else if (this.backgroundType() === 'gradient') {
+      const rad = (this.gradientAngle() * Math.PI) / 180;
+      const x0 = targetWidth / 2 - Math.cos(rad) * (targetWidth / 2);
+      const y0 = targetHeight / 2 - Math.sin(rad) * (targetHeight / 2);
+      const x1 = targetWidth / 2 + Math.cos(rad) * (targetWidth / 2);
+      const y1 = targetHeight / 2 + Math.sin(rad) * (targetHeight / 2);
+
+      const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, this.gradientColorStart());
+      grad.addColorStop(1, this.gradientColorEnd());
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+    } else if (this.backgroundType() === 'blur') {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+      ctx.save();
+      ctx.filter = `blur(${this.blurAmount()}px) brightness(${this.blurBrightness() / 100})`;
+      const bleed = this.blurAmount() * 2;
+      ctx.drawImage(img, -bleed, -bleed, targetWidth + bleed * 2, targetHeight + bleed * 2);
+      ctx.restore();
+    }
 
     // Prepare clipping path for border radius + shadow if enabled
     ctx.save();
 
-    // Image coordinates offset centered inside target canvas
+    // Image coordinates offset centered inside target canvas, reserving space for EXIF
     const imgX = (targetWidth - img.width) / 2;
-    const imgY = (targetHeight - img.height) / 2;
+    const imgY = (targetHeight - exifSpace - img.height) / 2;
 
     if (this.shadowEnabled()) {
       ctx.shadowColor = this.shadowColor();
@@ -336,6 +432,40 @@ export class BorderEditorComponent implements OnDestroy {
     ctx.drawImage(img, imgX, imgY, img.width, img.height);
 
     ctx.restore();
+
+    // Draw EXIF text overlays if enabled
+    if (this.exifFrameEnabled() && file.exifData) {
+      const data = file.exifData;
+      ctx.save();
+
+      const finalFontSize = Math.max(12, Math.round((targetWidth / 1000) * this.exifFontSize()));
+      ctx.font = `600 ${finalFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
+      ctx.fillStyle = this.exifTextColor();
+      ctx.textBaseline = 'middle';
+
+      const textY = targetHeight - (exifSpace / 2);
+
+      if (this.exifFrameStyle() === 'minimal') {
+        if (data.camera) {
+          ctx.textAlign = 'left';
+          ctx.fillText(data.camera, imgX, textY);
+        }
+        if (data.settings) {
+          ctx.textAlign = 'right';
+          ctx.fillText(data.settings, imgX + img.width, textY);
+        }
+      } else {
+        ctx.textAlign = 'center';
+        let textLine = '';
+        if (data.camera && data.settings) {
+          textLine = `${data.camera}   |   ${data.settings}`;
+        } else {
+          textLine = data.camera || data.settings || '';
+        }
+        ctx.fillText(textLine, targetWidth / 2, textY);
+      }
+      ctx.restore();
+    }
   }
 
 
